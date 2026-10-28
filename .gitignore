@@ -1,0 +1,21 @@
+# Python virtual environment
+.venv/
+
+# Environment variables and secrets
+.env
+
+# Python cache files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Raw and processed datasets
+data/raw/*
+data/processed/*
+
+# Keep placeholder files in data directories
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Local development files
+.vscode/
