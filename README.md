@@ -45,6 +45,8 @@ olist-ecommerce-data-pipeline/
 │   ├── transform_orders.py
 │   └── validate_orders.py
 ├── tests/
+│   ├── test_orders_integration.py
+│   └── test_transform_orders.py
 ├── .env.example
 ├── .gitignore
 ├── README.md
@@ -113,17 +115,30 @@ The initial execution processed 99,441 rows and returned 99,441 rows, with no du
 
 Automated tests have been implemented using Pytest to verify the orders transformation module.
 
-The current test suite validates:
+The unit tests validate:
 
 - Conversion of timestamp columns to Pandas datetime values.
 - Removal of duplicate order identifiers.
 - Preservation of orders with missing customer delivery timestamps.
 
-**Latest test results:** 3 tests passed, 0 failed.
+### 7. Integration Testing
+
+An integration test validates the orders transformation using the real Olist orders CSV.
+
+The test verifies that:
+
+- The dataset contains the expected 99,441 orders.
+- The transformation preserves the number of records.
+- Order IDs are present and unique after transformation.
+- Purchase timestamps are converted to Pandas datetime values.
+- Missing customer delivery timestamps are preserved.
+
+The integration test is skipped if the local dataset is unavailable.
+
+**Latest test results:** 4 tests passed, 0 failed.
 
 ## Planned Work
 
-- Add automated tests for the transformation module.
 - Refine data quality rules based on the initial findings.
 - Build a repeatable ETL workflow.
 - Load transformed data into PostgreSQL.
@@ -138,6 +153,6 @@ Do not commit `.env` files, passwords, or other credentials.
 
 ## Current Status
 
-**In progress:** Dataset exploration, orders validation, and the initial orders transformation module.
+**In progress:** Dataset exploration, orders validation, transformation, and automated testing.
 
 Database integration, analytical SQL, and automated CI workflows are planned next.
