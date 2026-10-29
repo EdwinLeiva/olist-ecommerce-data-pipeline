@@ -109,6 +109,18 @@ The module `src/transform_orders.py` currently:
 
 The initial execution processed 99,441 rows and returned 99,441 rows, with no duplicate order IDs. The original CSV remains unchanged.
 
+### 6. Automated Tests
+
+Automated tests have been implemented using Pytest to verify the orders transformation module.
+
+The current test suite validates:
+
+- Conversion of timestamp columns to Pandas datetime values.
+- Removal of duplicate order identifiers.
+- Preservation of orders with missing customer delivery timestamps.
+
+**Latest test results:** 3 tests passed, 0 failed.
+
 ## Planned Work
 
 - Add automated tests for the transformation module.
