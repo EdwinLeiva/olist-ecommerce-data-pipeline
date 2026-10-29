@@ -8,23 +8,55 @@ RAW_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
 ORDERS_FILE = RAW_DATA_DIR / "olist_orders_dataset.csv"
 
 
+# Columns expected in the orders dataset
+REQUIRED_COLUMNS = [
+    "order_id",
+    "customer_id",
+    "order_status",
+    "order_purchase_timestamp",
+    "order_approved_at",
+    "order_delivered_carrier_date",
+    "order_delivered_customer_date",
+    "order_estimated_delivery_date",
+]
+
+
 def validate_orders():
     """Validate order dates and basic data quality rules."""
+
+    # Load the original dataset
     df = pd.read_csv(ORDERS_FILE)
 
     print("=" * 60)
     print("ORDER DATA QUALITY VALIDATION")
     print("=" * 60)
 
-    # 1. Check required identifiers
+    # 1. Check required columns
+    missing_columns = [
+        column for column in REQUIRED_COLUMNS
+        if column not in df.columns
+    ]
+
+    print("\n1. Required columns")
+    print(f"Expected columns: {len(REQUIRED_COLUMNS)}")
+    print(f"Missing columns: {len(missing_columns)}")
+
+    if missing_columns:
+        raise ValueError(
+            f"Orders dataset is missing required columns: {missing_columns}"
+        )
+
+    print("All required columns are present.")
+
+    # 2. Check required identifiers
     missing_order_ids = df["order_id"].isna().sum()
     duplicate_order_ids = df["order_id"].duplicated().sum()
 
-    print("\n1. Order identifiers")
+    print("\n2. Order identifiers")
     print(f"Missing order IDs: {missing_order_ids}")
     print(f"Duplicate order IDs: {duplicate_order_ids}")
 
-    # 2. Convert date columns to datetime
+    # 3. Convert date columns to datetime
     date_columns = [
         "order_purchase_timestamp",
         "order_approved_at",
@@ -36,10 +68,10 @@ def validate_orders():
     for column in date_columns:
         df[column] = pd.to_datetime(df[column], errors="coerce")
 
-    print("\n2. Missing dates after datetime conversion")
-    print(df[date_columns].isna().sum())
+    print("\n3. Missing dates after datetime conversion")
+    print(df[date_columns].isna().sum().to_string())
 
-    # 3. Check approval dates before purchase dates
+    # 4. Check approval dates before purchase dates
     invalid_approval_dates = (
         df["order_approved_at"].notna()
         & df["order_purchase_timestamp"].notna()
@@ -49,10 +81,10 @@ def validate_orders():
         )
     )
 
-    print("\n3. Approval before purchase")
+    print("\n4. Approval before purchase")
     print(f"Invalid records: {invalid_approval_dates.sum()}")
 
-    # 4. Check carrier delivery before purchase
+    # 5. Check carrier delivery before purchase
     invalid_carrier_dates = (
         df["order_delivered_carrier_date"].notna()
         & df["order_purchase_timestamp"].notna()
@@ -62,10 +94,10 @@ def validate_orders():
         )
     )
 
-    print("\n4. Carrier delivery before purchase")
+    print("\n5. Carrier delivery before purchase")
     print(f"Invalid records: {invalid_carrier_dates.sum()}")
 
-    # 5. Check customer delivery before purchase
+    # 6. Check customer delivery before purchase
     invalid_customer_delivery_dates = (
         df["order_delivered_customer_date"].notna()
         & df["order_purchase_timestamp"].notna()
@@ -75,10 +107,13 @@ def validate_orders():
         )
     )
 
-    print("\n5. Customer delivery before purchase")
-    print(f"Invalid records: {invalid_customer_delivery_dates.sum()}")
+    print("\n6. Customer delivery before purchase")
+    print(
+        "Invalid records: "
+        f"{invalid_customer_delivery_dates.sum()}"
+    )
 
-    # 6. Check customer delivery after estimated delivery
+    # 7. Check customer delivery after estimated delivery
     late_delivery_comparison = (
         df["order_delivered_customer_date"].notna()
         & df["order_estimated_delivery_date"].notna()
@@ -92,11 +127,14 @@ def validate_orders():
         )
     )
 
-    print("\n6. Customer delivery after estimated date")
-    print(f"Records delivered after estimate: {delivered_after_estimate.sum()}")
+    print("\n7. Customer delivery after estimated date")
+    print(
+        "Records delivered after estimate: "
+        f"{delivered_after_estimate.sum()}"
+    )
 
-    # 7. Investigate carrier delivery dates before purchase
-    print("\nExamples of carrier dates before purchase:")
+    # 8. Investigate carrier delivery dates before purchase
+    print("\n8. Examples of carrier dates before purchase:")
 
     invalid_carrier_records = df.loc[
         invalid_carrier_dates,
@@ -109,7 +147,10 @@ def validate_orders():
         ],
     ]
 
-    print(f"Total inconsistent records: {len(invalid_carrier_records)}")
+    print(
+        f"Total inconsistent records: "
+        f"{len(invalid_carrier_records)}"
+    )
 
     print(
         invalid_carrier_records
