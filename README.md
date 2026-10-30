@@ -321,6 +321,35 @@ python -m pytest -v
 - Implement automated testing with GitHub Actions.
 - Improve database schema design and data modeling.
 
+## Data Quality and Referential Integrity
+
+### Orders and Order Items Validation
+
+As part of the data quality assessment, the `orders` and `order_items` tables were analyzed to verify their consistency and relationship.
+
+**Validation results:**
+
+| Validation | Result |
+|---|---:|
+| Total orders | 99,441 |
+| Orders with associated items | 98,666 |
+| Orders without associated items | 775 |
+| Orders with items but no matching order | 0 |
+| Orders with items coverage | 99.22% |
+
+### Key Findings
+
+- 98,666 orders (99.22%) have at least one associated item in the `order_items` table.
+- 775 orders (0.78%) do not have associated records in `order_items`.
+- No orphan records were found: every `order_id` in `order_items` matches an existing order in `orders`.
+- Among the 775 orders without items, 603 have the status `unavailable`. All 603 have an approval timestamp, but none have shipping or delivery timestamps.
+
+### Conclusion
+
+The relationship between `orders` and `order_items` is consistent from the perspective of orphan records. However, the 775 orders without associated items represent an exception worth investigating.
+
+These records were preserved in the dataset rather than deleted or modified, since they may provide useful information about canceled, unavailable, or otherwise unfulfilled orders.
+
 ## Author
 
 **Edwin Leiva**
