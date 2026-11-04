@@ -3,7 +3,7 @@ import pandas as pd
 from src import pipeline
 
 
-def test_run_pipeline_processes_orders_and_order_items(
+def test_run_pipeline_processes_all_datasets(
     monkeypatch,
     tmp_path,
 ):
@@ -55,11 +55,24 @@ def test_run_pipeline_processes_orders_and_order_items(
         }
     )
 
-    # 3. Arrange: isolate output files
+    # 3. Arrange: create sample products
+    sample_products = pd.DataFrame(
+        {
+            "product_id": ["product_1", "product_2", "product_3"],
+            "product_category_name": [
+                "electronics",
+                "furniture",
+                "sports",
+            ],
+            "product_weight_g": [500, 1200, 800],
+        }
+    )
+
+    # 4. Arrange: isolate output files
     output_dir = tmp_path / "processed"
     monkeypatch.setattr(pipeline, "PROCESSED_DIR", output_dir)
 
-    # 4. Arrange: simulate database operations
+    # 5. Arrange: simulate database operations
     class FakeEngine:
         def dispose(self):
             pass
@@ -74,6 +87,12 @@ def test_run_pipeline_processes_orders_and_order_items(
         pipeline,
         "load_order_items",
         lambda: sample_order_items.copy(),
+    )
+
+    monkeypatch.setattr(
+        pipeline,
+        "load_products",
+        lambda: sample_products.copy(),
     )
 
     monkeypatch.setattr(
@@ -94,30 +113,46 @@ def test_run_pipeline_processes_orders_and_order_items(
         lambda df, engine: len(df),
     )
 
-    # 5. Act: run the pipeline
-    transformed_orders, transformed_order_items = (
-        pipeline.run_pipeline()
+    monkeypatch.setattr(
+        pipeline,
+        "load_products_to_database",
+        lambda df, engine: len(df),
     )
 
-    # 6. Assert: verify transformed orders
+    # 6. Act: run the pipeline
+    (
+        transformed_orders,
+        transformed_order_items,
+        transformed_products,
+    ) = pipeline.run_pipeline()
+
+    # 7. Assert: verify orders
     assert len(transformed_orders) == 2
     assert transformed_orders["order_id"].nunique() == 2
 
-    # 7. Assert: verify transformed order items
+    # 8. Assert: verify order items
     assert len(transformed_order_items) == 3
     assert not transformed_order_items.duplicated(
         subset=["order_id", "order_item_id"]
     ).any()
 
-    # 8. Assert: verify processed CSV files
+    # 9. Assert: verify products
+    assert len(transformed_products) == 3
+    assert transformed_products["product_id"].is_unique
+
+    # 10. Assert: verify processed CSV files
     orders_output = output_dir / "orders_processed.csv"
     items_output = output_dir / "order_items_processed.csv"
+    products_output = output_dir / "products_processed.csv"
 
     assert orders_output.exists()
     assert items_output.exists()
+    assert products_output.exists()
 
     saved_orders = pd.read_csv(orders_output)
     saved_items = pd.read_csv(items_output)
+    saved_products = pd.read_csv(products_output)
 
     assert len(saved_orders) == 2
     assert len(saved_items) == 3
+    assert len(saved_products) == 3
