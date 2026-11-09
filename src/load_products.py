@@ -1,3 +1,4 @@
+import pandas as pd
 from sqlalchemy import text
 
 from src.load_orders import get_database_engine
@@ -8,37 +9,67 @@ from src.transform_products import (
 
 
 def load_products_to_database(df, engine):
-    """Load transformed products into PostgreSQL."""
+    """Load products into PostgreSQL using UPSERT."""
 
     print("Loading products into PostgreSQL...")
 
-    expected_rows = len(df)
+    if df.empty:
+        print("No products to load.")
+        return 0
 
-    df.to_sql(
-        name="products",
-        con=engine,
-        if_exists="replace",
-        index=False,
-        chunksize=5000,
-        method="multi",
-    )
+    # Convert missing values (NaN/NaT) to None for PostgreSQL.
+    df = df.astype(object).where(pd.notna(df), None)
+    records = df.to_dict(orient="records")
 
-    # Verify the actual number of rows in PostgreSQL
-    with engine.connect() as connection:
+    insert_statement = text("""
+        INSERT INTO products (
+            product_id,
+            product_category_name,
+            product_name_lenght,
+            product_description_lenght,
+            product_photos_qty,
+            product_weight_g,
+            product_length_cm,
+            product_height_cm,
+            product_width_cm
+        )
+        VALUES (
+            :product_id,
+            :product_category_name,
+            :product_name_lenght,
+            :product_description_lenght,
+            :product_photos_qty,
+            :product_weight_g,
+            :product_length_cm,
+            :product_height_cm,
+            :product_width_cm
+        )
+        ON CONFLICT (product_id)
+        DO UPDATE SET
+            product_category_name = EXCLUDED.product_category_name,
+            product_name_lenght = EXCLUDED.product_name_lenght,
+            product_description_lenght = EXCLUDED.product_description_lenght,
+            product_photos_qty = EXCLUDED.product_photos_qty,
+            product_weight_g = EXCLUDED.product_weight_g,
+            product_length_cm = EXCLUDED.product_length_cm,
+            product_height_cm = EXCLUDED.product_height_cm,
+            product_width_cm = EXCLUDED.product_width_cm
+    """)
+
+    batch_size = 1000
+
+    with engine.begin() as connection:
+        for start in range(0, len(records), batch_size):
+            batch = records[start:start + batch_size]
+            connection.execute(insert_statement, batch)
+
         actual_rows = connection.execute(
             text("SELECT COUNT(*) FROM products")
         ).scalar_one()
 
-    print(f"Rows expected: {expected_rows:,}")
-    print(f"Rows verified in PostgreSQL: {actual_rows:,}")
-
-    if actual_rows != expected_rows:
-        raise ValueError(
-            f"Row count mismatch: expected {expected_rows}, "
-            f"found {actual_rows}"
-        )
-
-    print("Products table created and verified successfully.")
+    print(f"Rows received: {len(records):,}")
+    print(f"Rows currently in PostgreSQL: {actual_rows:,}")
+    print("Products incrementally loaded successfully.")
 
     return actual_rows
 
@@ -64,9 +95,7 @@ def main():
             engine,
         )
 
-        print(
-            f"Successfully loaded {rows_loaded:,} products into Neon!"
-        )
+        print(f"Total products in database: {rows_loaded:,}")
 
     finally:
         engine.dispose()
