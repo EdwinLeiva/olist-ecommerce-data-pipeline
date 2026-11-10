@@ -1,6 +1,6 @@
 # Olist E-commerce Data Pipeline
 
-An end-to-end data engineering project that transforms Brazilian e-commerce data into structured, analysis-ready datasets using Python, Pandas, and Neon PostgreSQL.
+An end-to-end data engineering project that transforms Brazilian e-commerce data into analysis-ready datasets using Python, Pandas, and Neon PostgreSQL.
 
 ## Overview
 
@@ -15,8 +15,6 @@ The current pipeline processes three datasets:
 | Products | 32,951 |
 | **Total** | **245,042** |
 
-The project also includes data quality checks, automated tests, and SQL queries to analyze business performance.
-
 ## Architecture
 
 ```text
@@ -26,18 +24,19 @@ Olist CSV Files
 Python + Pandas
       |
       v
-Extract and Transform
+Extract & Transform
       |
       v
 Data Validation
       |
-      +----------------+
-      |                |
-      v                v
-Processed CSV    Neon PostgreSQL
-                       |
-                       v
-                  SQL Analysis
+      v
+Processed CSV Files
+      |
+      v
+Neon PostgreSQL
+      |
+      v
+SQL Business Analysis
 ```
 
 ## Technology Stack
@@ -45,56 +44,33 @@ Processed CSV    Neon PostgreSQL
 | Technology | Purpose |
 |---|---|
 | Python 3.13 | ETL development |
-| Pandas | Data processing |
+| Pandas | Data transformation |
 | PostgreSQL | Relational database |
 | Neon | Cloud database hosting |
 | SQLAlchemy | Database connectivity |
 | Psycopg | PostgreSQL driver |
 | python-dotenv | Environment configuration |
 | Pytest | Automated testing |
-| Git and GitHub | Version control |
-
-## Data Source
-
-The project uses the Olist Brazilian E-commerce dataset, which contains nine CSV files covering orders, customers, products, sellers, payments, reviews, and other e-commerce information.
-
-Raw files are stored locally in `data/raw/` and excluded from Git.
-
-The current pipeline processes:
-
-- `orders`
-- `order_items`
-- `products`
+| Git & GitHub | Version control |
 
 ## Project Structure
 
 ```text
 olist-ecommerce-data-pipeline/
-|
 ├── data/
 │   ├── raw/
 │   └── processed/
-|
+├── logs/
 ├── sql/
-│   ├── 01_database_inspection.sql
-│   ├── 02_monthly_sales.sql
-│   ├── 03_global_sales_metrics.sql
-│   ├── 04_product_price_distribution.sql
-│   ├── 05_product_price_outliers.sql
-│   ├── 06_sales_by_category.sql
-│   ├── 07_category_sales_percentage.sql
-│   ├── 08_category_pareto_analysis.sql
-│   └── 09_top_sellers.sql
-|
 ├── src/
+│   ├── logger.py
+│   ├── pipeline.py
 │   ├── transform_orders.py
 │   ├── transform_order_items.py
 │   ├── transform_products.py
 │   ├── load_orders.py
 │   ├── load_order_items.py
-│   ├── load_products.py
-│   └── pipeline.py
-|
+│   └── load_products.py
 ├── tests/
 ├── .env.example
 ├── .gitignore
@@ -104,15 +80,15 @@ olist-ecommerce-data-pipeline/
 
 ## ETL Pipeline
 
-The main orchestration module is `src/pipeline.py`.
-
-It performs five stages:
+The pipeline performs five stages:
 
 1. **Extract:** Reads the original orders, order items, and products CSV files.
-2. **Transform:** Converts data types, removes invalid identifiers, and handles duplicate records.
-3. **Save:** Generates processed CSV files in `data/processed/`.
-4. **Load:** Loads the transformed datasets into Neon PostgreSQL.
-5. **Verify:** Compares database row counts with the expected records.
+2. **Transform:** Cleans records, converts data types, and handles duplicates and missing values.
+3. **Save:** Generates processed CSV files.
+4. **Load:** Uses PostgreSQL UPSERT operations to insert new records and update existing ones.
+5. **Verify:** Checks database record counts after loading.
+
+The UPSERT implementation makes database loading idempotent and preserves existing primary keys. Extraction and transformation currently process the complete CSV datasets.
 
 Run the pipeline:
 
@@ -120,119 +96,52 @@ Run the pipeline:
 python -m src.pipeline
 ```
 
-Each execution performs a full refresh of the three database tables. Existing table contents are replaced rather than incrementally updated.
-
-## Data Quality and Validation
-
-The pipeline applies checks for missing identifiers, duplicate records, data types, and date conversions.
-
-Key findings:
-
-- All 99,441 orders and 112,650 order items were processed.
-- 98,666 orders have associated items.
-- 775 orders have no associated items.
-- No order items reference nonexistent orders.
-- 2,965 orders have missing customer delivery timestamps.
-- All 32,951 product records were preserved.
-- Missing product metadata is retained as null rather than replaced with arbitrary values.
-
-These checks help preserve the original information while identifying records that may require further investigation.
-
-## Database Integration
+## Database and Logging
 
 The project uses Neon PostgreSQL with SQLAlchemy and Psycopg.
 
-Database credentials are configured through environment variables using `python-dotenv`. Sensitive credentials are kept outside version control.
+Database credentials are managed through environment variables and excluded from version control.
 
-### Latest successful ETL execution
+The logging system records pipeline execution events, warnings, and errors in the console and `logs/pipeline.log`.
 
-| Dataset | Extracted | Transformed | Loaded |
-|---|---:|---:|---:|
-| Orders | 99,441 | 99,441 | 99,441 |
-| Order Items | 112,650 | 112,650 | 112,650 |
-| Products | 32,951 | 32,951 | 32,951 |
-| **Total** | **245,042** | **245,042** | **245,042** |
+## Data Quality
 
-All three database tables were successfully loaded and verified.
+Key validation results:
+
+- 99,441 orders processed.
+- 112,650 order items processed.
+- 32,951 products processed.
+- 775 orders have no associated items.
+- No order items reference nonexistent orders.
+- 2,965 orders have missing customer delivery timestamps.
 
 ## SQL Business Analysis
 
-The `sql/` directory contains nine queries for database inspection and business analysis.
+The `sql/` directory contains nine queries covering:
 
-The analysis covers monthly sales, overall performance, product price distribution, price outliers, category revenue, Pareto analysis, and seller performance.
+- Database inspection and data validation.
+- Monthly and overall sales performance.
+- Product price distribution and outlier detection.
+- Sales by product category.
+- Category revenue and Pareto analysis.
+- Seller performance.
 
-### Key findings
+Selected findings:
 
-**Overall sales performance**
-
-| Metric | Result |
+| Business Metric | Result |
 |---|---:|
 | Delivered orders | 96,478 |
 | Delivered items | 110,197 |
 | Product sales | $13,221,498.11 |
 | Average order value | $137.04 |
-| Average item price | $119.98 |
 
 *Product sales and average order value exclude freight charges.*
 
-**Monthly performance**
-
-- November 2017 recorded the highest monthly product sales, with $987,765.37.
-- May 2018 followed closely with $977,544.69.
-- Sales increased considerably throughout 2017 and remained strong during the first five months of 2018.
-
-**Product categories**
-
-The three leading categories by delivered product revenue were:
-
-| Category | Product Sales |
-|---|---:|
-| Beauty & Health | $1,233,131.72 |
-| Watches & Gifts | $1,166,176.98 |
-| Bed, Bath & Table | $1,023,434.76 |
-
-Together, these categories represented approximately 25.89% of delivered product sales.
-
-The Pareto analysis showed that:
-
-- 8 categories accounted for approximately 54.49% of revenue.
-- 13 categories accounted for approximately 71.97%.
-- 18 categories accounted for approximately 81.29%.
-
-**Product price distribution**
-
-| Metric | Result |
-|---|---:|
-| Average item price | $120.65 |
-| Median item price | $74.99 |
-| 25th percentile | $39.90 |
-| 75th percentile | $134.90 |
-| Upper outlier threshold | $277.40 |
-
-The analysis identified 8,427 items above the statistical outlier threshold, representing 7.48% of all items and 35.61% of total product sales.
-
-These records were retained because high prices do not necessarily indicate data quality problems.
-
-**Seller performance**
-
-The seller analysis identified differences between sales volume and revenue. For example, the highest-volume seller recorded 1,949 items, while the highest-revenue seller generated $226,987.93 from 1,148 items.
-
-This demonstrates why seller performance should be evaluated using multiple business metrics.
-
 ## Automated Testing
 
-The project uses Pytest to validate transformations, data quality rules, and pipeline execution.
+The project uses Pytest to validate data transformations, quality rules, and pipeline execution.
 
-The test suite covers:
-
-- Date and numeric conversions.
-- Duplicate identifier removal.
-- Missing value handling.
-- Product data transformations.
-- Required column validation.
-- Pipeline execution using sample data without connecting to the production database.
-
-**Latest test results: 13 passed, 0 failed.**
+Current test results: **13 passed, 0 failed.**
 
 Run the tests:
 
@@ -246,7 +155,6 @@ python -m pytest -v
 
 ```bash
 git clone https://github.com/EdwinLeiva/olist-ecommerce-data-pipeline.git
-
 cd olist-ecommerce-data-pipeline
 ```
 
@@ -276,17 +184,9 @@ Copy `.env.example` to `.env` and configure your Neon connection:
 DATABASE_URL="postgresql+psycopg://USER:PASSWORD@HOST/DATABASE?sslmode=require"
 ```
 
-Replace the placeholders with your database credentials.
-
-**Security:** Never commit `.env` files, passwords, or database credentials to GitHub.
-
 ### 5. Add the dataset
 
-Download the Olist Brazilian E-commerce dataset and place the original CSV files in:
-
-```text
-data/raw/
-```
+Place the original Olist CSV files in `data/raw/`.
 
 ### 6. Run the pipeline
 
@@ -300,22 +200,21 @@ python -m src.pipeline
 python -m pytest -v
 ```
 
+**Security:** Never commit `.env` files or database credentials.
+
 ## Project Status
 
-### Completed
-
+**Completed**
 - Project setup and GitHub integration.
-- Dataset inspection and data quality validation.
-- ETL transformations for orders, order items, and products.
+- Data inspection and validation.
+- ETL transformations for three datasets.
 - Neon PostgreSQL integration.
-- Successful loading and verification of 245,042 records.
-- Automated test suite with 13 passing tests.
-- SQL analysis covering sales, categories, prices, and sellers.
+- Idempotent UPSERT database loading.
+- Logging and pipeline error handling.
+- SQL business analysis.
+- Automated tests (13 passing).
 
-### Next Development Goals
-
-- Implement incremental data loading.
-- Improve logging and error handling.
+**Next Development Goals**
 - Extend the pipeline to additional Olist datasets.
 - Improve database schema design and data modeling.
 - Implement automated testing with GitHub Actions.

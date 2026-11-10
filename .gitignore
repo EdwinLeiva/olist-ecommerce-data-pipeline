@@ -19,3 +19,5 @@ data/processed/*
 
 # Local development files
 .vscode/
+
+logs/

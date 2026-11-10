@@ -1,4 +1,5 @@
 from pathlib import Path
+from src.logger import setup_logger
 
 from src.transform_orders import load_orders, transform_orders
 from src.transform_order_items import (
@@ -22,40 +23,42 @@ from src.load_products import load_products_to_database
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
+logger = setup_logger()
+
 
 def run_pipeline():
     """
     Extract, transform, save, and load Olist datasets into Neon.
     """
-
-    print("=" * 60)
-    print("OLIST E-COMMERCE ETL PIPELINE")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("OLIST E-COMMERCE ETL PIPELINE")
+    logger.info("=" * 60)
+    
 
     # 1. Extract
-    print("\nStep 1: Extracting data...")
+    logger.info("Step 1: Extracting data...")
 
     orders = load_orders()
     order_items = load_order_items()
     products = load_products()
 
-    print(f"Orders extracted: {len(orders):,}")
-    print(f"Order items extracted: {len(order_items):,}")
-    print(f"Products extracted: {len(products):,}")
+    logger.info("Orders extracted: %s", f"{len(orders):,}")
+    logger.info("Order items extracted: %s", f"{len(order_items):,}")
+    logger.info("Products extracted: %s", f"{len(products):,}")
 
     # 2. Transform
-    print("\nStep 2: Transforming data...")
+    logger.info("Step 2: Transforming data...")
 
     transformed_orders = transform_orders(orders)
     transformed_order_items = transform_order_items(order_items)
     transformed_products = transform_products(products)
 
-    print(f"Orders transformed: {len(transformed_orders):,}")
-    print(f"Order items transformed: {len(transformed_order_items):,}")
-    print(f"Products transformed: {len(transformed_products):,}")
+    logger.info("Orders transformed: %s", f"{len(transformed_orders):,}")
+    logger.info("Order items transformed: %s", f"{len(transformed_order_items):,}")
+    logger.info("Products transformed: %s", f"{len(transformed_products):,}")
 
     # 3. Save processed CSV files
-    print("\nStep 3: Saving processed CSV files...")
+    logger.info("Step 3: Saving processed CSV files...")
 
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -67,12 +70,12 @@ def run_pipeline():
     transformed_order_items.to_csv(items_output, index=False)
     transformed_products.to_csv(products_output, index=False)
 
-    print(f"Orders CSV saved: {orders_output}")
-    print(f"Order items CSV saved: {items_output}")
-    print(f"Products CSV saved: {products_output}")
+    logger.info("Orders CSV saved: %s", orders_output)
+    logger.info("Order items CSV saved: %s", items_output)
+    logger.info("Products CSV saved: %s", products_output)
 
     # 4. Load all tables into Neon
-    print("\nStep 4: Loading data into Neon...")
+    logger.info("Step 4: Loading data into Neon...")
 
     engine = get_database_engine()
 
@@ -81,56 +84,63 @@ def run_pipeline():
             transformed_orders,
             engine,
         )
-        print(f"Orders loaded and verified: {orders_loaded:,}")
+        logger.info("Orders loaded and verified: %s", f"{orders_loaded:,}")
 
         order_items_loaded = load_order_items_to_database(
             transformed_order_items,
             engine,
         )
-        print(f"Order items loaded and verified: {order_items_loaded:,}")
+        logger.info("Order items loaded and verified: %s", f"{order_items_loaded:,}")
 
         products_loaded = load_products_to_database(
             transformed_products,
             engine,
         )
-        print(f"Products loaded and verified: {products_loaded:,}")
+        logger.info("Products loaded and verified: %s", f"{products_loaded:,}")
 
     finally:
         engine.dispose()
 
     # 5. Pipeline summary
-    print("\nPipeline summary")
-    print("-" * 40)
+    logger.info("Pipeline summary")
+    logger.info("-" * 40)
 
-    print(f"Orders extracted: {len(orders):,}")
-    print(f"Orders transformed: {len(transformed_orders):,}")
-    print(f"Orders loaded: {orders_loaded:,}")
+    logger.info("Orders extracted: %s", f"{len(orders):,}")
+    logger.info("Orders transformed: %s", f"{len(transformed_orders):,}")
+    logger.info("Orders loaded: %s", f"{orders_loaded:,}")
 
-    print(f"Order items extracted: {len(order_items):,}")
-    print(f"Order items transformed: {len(transformed_order_items):,}")
-    print(f"Order items loaded: {order_items_loaded:,}")
+    logger.info("Order items extracted: %s", f"{len(order_items):,}")
+    logger.info("Order items transformed: %s", f"{len(transformed_order_items):,}")
+    logger.info("Order items loaded: %s", f"{order_items_loaded:,}")
 
-    print(f"Products extracted: {len(products):,}")
-    print(f"Products transformed: {len(transformed_products):,}")
-    print(f"Products loaded: {products_loaded:,}")
+    logger.info("Products extracted: %s", f"{len(products):,}")
+    logger.info("Products transformed: %s", f"{len(transformed_products):,}")
+    logger.info("Products loaded: %s", f"{products_loaded:,}")
 
-    print(
-        "Missing customer delivery dates:",
-        transformed_orders["order_delivered_customer_date"].isna().sum(),
+    missing_delivery_dates = (
+        transformed_orders["order_delivered_customer_date"].isna().sum()
     )
 
-    print(f"Orders CSV: {orders_output}")
-    print(f"Order items CSV: {items_output}")
-    print(f"Products CSV: {products_output}")
+    logger.warning(
+        "Orders with missing customer delivery dates: %s",
+        f"{missing_delivery_dates:,}",
+    )
 
-    print("\nETL pipeline completed successfully!")
+    logger.info("Orders CSV: %s", orders_output)
+    logger.info("Order items CSV: %s", items_output)
+    logger.info("Products CSV: %s", products_output)
+
+    logger.info("ETL pipeline completed successfully!")
 
     return (
-        transformed_orders,
-        transformed_order_items,
-        transformed_products,
-    )
-
+    transformed_orders,
+    transformed_order_items,
+    transformed_products,
+)
 
 if __name__ == "__main__":
-    run_pipeline()
+    try:
+        run_pipeline()
+    except Exception:
+        logger.exception("ETL pipeline failed.")
+        raise
