@@ -68,6 +68,17 @@ def test_run_pipeline_processes_all_datasets(
         }
     )
 
+    # 4. Arrange: create sample customers
+    sample_customers = pd.DataFrame(
+        {
+            "customer_id": ["customer_1", "customer_2"],
+            "customer_unique_id": ["unique_1", "unique_2"],
+            "customer_zip_code_prefix": ["01001", "02002"],
+            "customer_city": ["sao paulo", "rio de janeiro"],
+            "customer_state": ["SP", "RJ"],
+        }
+    )
+
     # 4. Arrange: isolate output files
     output_dir = tmp_path / "processed"
     monkeypatch.setattr(pipeline, "PROCESSED_DIR", output_dir)
@@ -97,6 +108,12 @@ def test_run_pipeline_processes_all_datasets(
 
     monkeypatch.setattr(
         pipeline,
+        "load_customers",
+        lambda: sample_customers.copy(),
+    )
+
+    monkeypatch.setattr(
+        pipeline,
         "get_database_engine",
         lambda: FakeEngine(),
     )
@@ -119,11 +136,18 @@ def test_run_pipeline_processes_all_datasets(
         lambda df, engine: len(df),
     )
 
+    monkeypatch.setattr(
+        pipeline,
+        "load_customers_to_database",
+        lambda df, engine: len(df),
+    )
+
     # 6. Act: run the pipeline
     (
         transformed_orders,
         transformed_order_items,
         transformed_products,
+        transformed_customers,
     ) = pipeline.run_pipeline()
 
     # 7. Assert: verify orders
@@ -140,19 +164,30 @@ def test_run_pipeline_processes_all_datasets(
     assert len(transformed_products) == 3
     assert transformed_products["product_id"].is_unique
 
-    # 10. Assert: verify processed CSV files
+    # 10. Assert: verify customers
+    assert len(transformed_customers) == 2
+    assert transformed_customers["customer_id"].is_unique
+    assert transformed_customers["customer_zip_code_prefix"].dtype == "string"
+
+    # 11. Assert: verify processed CSV files
     orders_output = output_dir / "orders_processed.csv"
     items_output = output_dir / "order_items_processed.csv"
     products_output = output_dir / "products_processed.csv"
+    customers_output = output_dir / "customers_processed.csv"
 
     assert orders_output.exists()
     assert items_output.exists()
     assert products_output.exists()
+    assert customers_output.exists()
 
     saved_orders = pd.read_csv(orders_output)
     saved_items = pd.read_csv(items_output)
     saved_products = pd.read_csv(products_output)
+    saved_customers = pd.read_csv(customers_output, dtype={
+        "customer_zip_code_prefix": "string"
+    })
 
     assert len(saved_orders) == 2
     assert len(saved_items) == 3
     assert len(saved_products) == 3
+    assert len(saved_customers) == 2

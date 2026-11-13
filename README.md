@@ -6,14 +6,15 @@ An end-to-end data engineering project that transforms Brazilian e-commerce data
 
 This project implements an ETL pipeline to extract, transform, validate, and load data from the Olist Brazilian E-commerce dataset into a cloud-hosted PostgreSQL database.
 
-The current pipeline processes three datasets:
+The current pipeline processes four datasets:
 
 | Dataset | Records |
 |---|---:|
 | Orders | 99,441 |
 | Order Items | 112,650 |
 | Products | 32,951 |
-| **Total** | **245,042** |
+| Customers | 99,441 |
+| **Total** | **344,483** |
 
 ## Architecture
 
@@ -68,9 +69,11 @@ olist-ecommerce-data-pipeline/
 │   ├── transform_orders.py
 │   ├── transform_order_items.py
 │   ├── transform_products.py
+│   ├── transform_customers.py
 │   ├── load_orders.py
 │   ├── load_order_items.py
-│   └── load_products.py
+│   ├── load_products.py
+│   └── load_customers.py
 ├── tests/
 ├── .env.example
 ├── .gitignore
@@ -82,7 +85,7 @@ olist-ecommerce-data-pipeline/
 
 The pipeline performs five stages:
 
-1. **Extract:** Reads the original orders, order items, and products CSV files.
+1. **Extract:** Reads the original orders, order items, products, and customers CSV files.
 2. **Transform:** Cleans records, converts data types, and handles duplicates and missing values.
 3. **Save:** Generates processed CSV files.
 4. **Load:** Uses PostgreSQL UPSERT operations to insert new records and update existing ones.
@@ -111,9 +114,11 @@ Key validation results:
 - 99,441 orders processed.
 - 112,650 order items processed.
 - 32,951 products processed.
+- 99,441 customers processed.
 - 775 orders have no associated items.
 - No order items reference nonexistent orders.
 - 2,965 orders have missing customer delivery timestamps.
+- Customer ZIP code prefixes are preserved as strings to retain leading zeros.
 
 ## SQL Business Analysis
 
@@ -141,7 +146,7 @@ Selected findings:
 
 The project uses Pytest to validate data transformations, quality rules, and pipeline execution.
 
-Current test results: **13 passed, 0 failed.**
+Current test results: **17 passed, 0 failed.**
 
 Run the tests:
 
@@ -205,16 +210,18 @@ python -m pytest -v
 ## Project Status
 
 **Completed**
+
 - Project setup and GitHub integration.
 - Data inspection and validation.
-- ETL transformations for three datasets.
+- ETL transformations for four datasets.
 - Neon PostgreSQL integration.
 - Idempotent UPSERT database loading.
 - Logging and pipeline error handling.
 - SQL business analysis.
-- Automated tests (13 passing).
+- Automated tests (17 passing).
 
 **Next Development Goals**
+
 - Extend the pipeline to additional Olist datasets.
 - Improve database schema design and data modeling.
 - Implement automated testing with GitHub Actions.
