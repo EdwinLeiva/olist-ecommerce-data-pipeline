@@ -98,6 +98,19 @@ def run_pipeline():
     engine = get_database_engine()
 
     try:
+
+        customers_loaded = load_customers_to_database(
+            transformed_customers,
+            engine,
+        )
+        logger.info("Customers loaded and verified: %s", f"{customers_loaded:,}")
+
+        products_loaded = load_products_to_database(
+            transformed_products,
+            engine,
+        )
+        logger.info("Products loaded and verified: %s", f"{products_loaded:,}")
+
         orders_loaded = load_orders_to_database(
             transformed_orders,
             engine,
@@ -110,26 +123,21 @@ def run_pipeline():
         )
         logger.info("Order items loaded and verified: %s", f"{order_items_loaded:,}")
 
-        products_loaded = load_products_to_database(
-            transformed_products,
-            engine,
-        )
-        logger.info("Products loaded and verified: %s", f"{products_loaded:,}")
-
-        customers_loaded = load_customers_to_database(
-            transformed_customers,
-            engine,
-        )
-        logger.info(
-            f"Customers loaded into database: {customers_loaded:,}"
-        )
 
     finally:
         engine.dispose()
 
     # 5. Pipeline summary
+
+    # 5. Pipeline summary
     logger.info("Pipeline summary")
     logger.info("-" * 40)
+
+    logger.info("Customers loaded: %s", f"{customers_loaded:,}")
+
+    logger.info("Products extracted: %s", f"{len(products):,}")
+    logger.info("Products transformed: %s", f"{len(transformed_products):,}")
+    logger.info("Products loaded: %s", f"{products_loaded:,}")
 
     logger.info("Orders extracted: %s", f"{len(orders):,}")
     logger.info("Orders transformed: %s", f"{len(transformed_orders):,}")
@@ -138,10 +146,6 @@ def run_pipeline():
     logger.info("Order items extracted: %s", f"{len(order_items):,}")
     logger.info("Order items transformed: %s", f"{len(transformed_order_items):,}")
     logger.info("Order items loaded: %s", f"{order_items_loaded:,}")
-
-    logger.info("Products extracted: %s", f"{len(products):,}")
-    logger.info("Products transformed: %s", f"{len(transformed_products):,}")
-    logger.info("Products loaded: %s", f"{products_loaded:,}")
 
     missing_delivery_dates = (
         transformed_orders["order_delivered_customer_date"].isna().sum()
