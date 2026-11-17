@@ -137,6 +137,12 @@ def test_run_pipeline_processes_all_datasets(
     )
 
     monkeypatch.setattr(
+    pipeline,
+    "load_product_categories_to_database",
+    lambda df, engine: df["product_category_name"].nunique(),
+    )
+
+    monkeypatch.setattr(
         pipeline,
         "load_customers_to_database",
         lambda df, engine: len(df),

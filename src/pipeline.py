@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from src.logger import setup_logger
 
 from src.transform_orders import load_orders, transform_orders
@@ -10,7 +11,6 @@ from src.transform_products import (
     load_products,
     transform_products,
 )
-
 from src.transform_customers import (
     load_customers,
     transform_customers,
@@ -22,7 +22,11 @@ from src.load_orders import (
 )
 from src.load_order_items import load_order_items_to_database
 from src.load_products import load_products_to_database
+from src.load_product_categories import (
+    load_product_categories_to_database,
+)
 from src.load_customers import load_customers_to_database
+
 
 # Project directories
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -35,10 +39,10 @@ def run_pipeline():
     """
     Extract, transform, save, and load Olist datasets into Neon.
     """
+
     logger.info("=" * 60)
     logger.info("OLIST E-COMMERCE ETL PIPELINE")
     logger.info("=" * 60)
-    
 
     # 1. Extract
     logger.info("Step 1: Extracting data...")
@@ -46,14 +50,12 @@ def run_pipeline():
     orders = load_orders()
     order_items = load_order_items()
     products = load_products()
+    customers = load_customers()
 
     logger.info("Orders extracted: %s", f"{len(orders):,}")
     logger.info("Order items extracted: %s", f"{len(order_items):,}")
     logger.info("Products extracted: %s", f"{len(products):,}")
-
-    logger.info("Extracting customers...")
-    customers = load_customers()
-    logger.info(f"Customers extracted: {len(customers):,}")
+    logger.info("Customers extracted: %s", f"{len(customers):,}")
 
     # 2. Transform
     logger.info("Step 2: Transforming data...")
@@ -61,14 +63,17 @@ def run_pipeline():
     transformed_orders = transform_orders(orders)
     transformed_order_items = transform_order_items(order_items)
     transformed_products = transform_products(products)
+    transformed_customers = transform_customers(customers)
 
     logger.info("Orders transformed: %s", f"{len(transformed_orders):,}")
-    logger.info("Order items transformed: %s", f"{len(transformed_order_items):,}")
-    logger.info("Products transformed: %s", f"{len(transformed_products):,}")
-    logger.info("Transforming customers...")
-    transformed_customers = transform_customers(customers)
     logger.info(
-        f"Customers transformed: {len(transformed_customers):,}"
+        "Order items transformed: %s",
+        f"{len(transformed_order_items):,}",
+    )
+    logger.info("Products transformed: %s", f"{len(transformed_products):,}")
+    logger.info(
+        "Customers transformed: %s",
+        f"{len(transformed_customers):,}",
     )
 
     # 3. Save processed CSV files
@@ -79,18 +84,17 @@ def run_pipeline():
     orders_output = PROCESSED_DIR / "orders_processed.csv"
     items_output = PROCESSED_DIR / "order_items_processed.csv"
     products_output = PROCESSED_DIR / "products_processed.csv"
+    customers_output = PROCESSED_DIR / "customers_processed.csv"
 
     transformed_orders.to_csv(orders_output, index=False)
     transformed_order_items.to_csv(items_output, index=False)
     transformed_products.to_csv(products_output, index=False)
+    transformed_customers.to_csv(customers_output, index=False)
 
     logger.info("Orders CSV saved: %s", orders_output)
     logger.info("Order items CSV saved: %s", items_output)
     logger.info("Products CSV saved: %s", products_output)
-
-    customers_output = PROCESSED_DIR / "customers_processed.csv"
-    transformed_customers.to_csv(customers_output, index=False)
-    logger.info(f"Processed customers saved to: {customers_output}")
+    logger.info("Customers CSV saved: %s", customers_output)
 
     # 4. Load all tables into Neon
     logger.info("Step 4: Loading data into Neon...")
@@ -98,42 +102,61 @@ def run_pipeline():
     engine = get_database_engine()
 
     try:
-
+        # Load parent tables before dependent tables.
         customers_loaded = load_customers_to_database(
             transformed_customers,
             engine,
         )
-        logger.info("Customers loaded and verified: %s", f"{customers_loaded:,}")
+        logger.info(
+            "Customers loaded and verified: %s",
+            f"{customers_loaded:,}",
+        )
+
+        categories_loaded = load_product_categories_to_database(
+            transformed_products,
+            engine,
+        )
+        logger.info(
+            "Product categories loaded and verified: %s",
+            f"{categories_loaded:,}",
+        )
 
         products_loaded = load_products_to_database(
             transformed_products,
             engine,
         )
-        logger.info("Products loaded and verified: %s", f"{products_loaded:,}")
+        logger.info(
+            "Products loaded and verified: %s",
+            f"{products_loaded:,}",
+        )
 
         orders_loaded = load_orders_to_database(
             transformed_orders,
             engine,
         )
-        logger.info("Orders loaded and verified: %s", f"{orders_loaded:,}")
+        logger.info(
+            "Orders loaded and verified: %s",
+            f"{orders_loaded:,}",
+        )
 
         order_items_loaded = load_order_items_to_database(
             transformed_order_items,
             engine,
         )
-        logger.info("Order items loaded and verified: %s", f"{order_items_loaded:,}")
-
+        logger.info(
+            "Order items loaded and verified: %s",
+            f"{order_items_loaded:,}",
+        )
 
     finally:
         engine.dispose()
-
-    # 5. Pipeline summary
 
     # 5. Pipeline summary
     logger.info("Pipeline summary")
     logger.info("-" * 40)
 
     logger.info("Customers loaded: %s", f"{customers_loaded:,}")
+    logger.info("Product categories loaded: %s", f"{categories_loaded:,}")
 
     logger.info("Products extracted: %s", f"{len(products):,}")
     logger.info("Products transformed: %s", f"{len(transformed_products):,}")
@@ -144,7 +167,10 @@ def run_pipeline():
     logger.info("Orders loaded: %s", f"{orders_loaded:,}")
 
     logger.info("Order items extracted: %s", f"{len(order_items):,}")
-    logger.info("Order items transformed: %s", f"{len(transformed_order_items):,}")
+    logger.info(
+        "Order items transformed: %s",
+        f"{len(transformed_order_items):,}",
+    )
     logger.info("Order items loaded: %s", f"{order_items_loaded:,}")
 
     missing_delivery_dates = (
@@ -159,7 +185,8 @@ def run_pipeline():
     logger.info("Orders CSV: %s", orders_output)
     logger.info("Order items CSV: %s", items_output)
     logger.info("Products CSV: %s", products_output)
-    logger.info(f"Customers loaded: {customers_loaded:,}")
+    logger.info("Customers CSV: %s", customers_output)
+
     logger.info("ETL pipeline completed successfully!")
 
     return (
@@ -168,6 +195,8 @@ def run_pipeline():
         transformed_products,
         transformed_customers,
     )
+
+
 if __name__ == "__main__":
     try:
         run_pipeline()
