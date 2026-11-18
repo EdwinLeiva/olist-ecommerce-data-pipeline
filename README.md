@@ -1,20 +1,21 @@
 # Olist E-commerce Data Pipeline
 
-An end-to-end data engineering project that transforms Brazilian e-commerce data into analysis-ready datasets using Python, Pandas, and Neon PostgreSQL.
+An end-to-end data engineering project that processes Brazilian e-commerce data using Python, Pandas, and Neon PostgreSQL.
 
 ## Overview
 
 This project implements an ETL pipeline to extract, transform, validate, and load data from the Olist Brazilian E-commerce dataset into a cloud-hosted PostgreSQL database.
 
-The current pipeline processes four datasets:
+The pipeline currently processes five datasets:
 
 | Dataset | Records |
 |---|---:|
+| Customers | 99,441 |
+| Product Categories | 73 |
+| Products | 32,951 |
 | Orders | 99,441 |
 | Order Items | 112,650 |
-| Products | 32,951 |
-| Customers | 99,441 |
-| **Total** | **344,483** |
+| **Total** | **344,556** |
 
 ## Architecture
 
@@ -52,7 +53,7 @@ SQL Business Analysis
 | Psycopg | PostgreSQL driver |
 | python-dotenv | Environment configuration |
 | Pytest | Automated testing |
-| Git & GitHub | Version control |
+| GitHub Actions | Continuous integration |
 
 ## Project Structure
 
@@ -63,18 +64,19 @@ olist-ecommerce-data-pipeline/
 │   └── processed/
 ├── logs/
 ├── sql/
+│   ├── 01_database_inspection.sql
+│   ├── ...
+│   └── 10_schema_documentation.md
 ├── src/
-│   ├── logger.py
 │   ├── pipeline.py
-│   ├── transform_orders.py
-│   ├── transform_order_items.py
-│   ├── transform_products.py
-│   ├── transform_customers.py
-│   ├── load_orders.py
-│   ├── load_order_items.py
-│   ├── load_products.py
-│   └── load_customers.py
+│   ├── logger.py
+│   ├── check_connection.py
+│   ├── transform_*.py
+│   └── load_*.py
 ├── tests/
+├── .github/
+│   └── workflows/
+│       └── python-tests.yml
 ├── .env.example
 ├── .gitignore
 ├── README.md
@@ -83,15 +85,15 @@ olist-ecommerce-data-pipeline/
 
 ## ETL Pipeline
 
-The pipeline performs five stages:
+The pipeline executes five stages:
 
-1. **Extract:** Reads the original orders, order items, products, and customers CSV files.
+1. **Extract:** Reads the source CSV datasets.
 2. **Transform:** Cleans records, converts data types, and handles duplicates and missing values.
 3. **Save:** Generates processed CSV files.
 4. **Load:** Uses PostgreSQL UPSERT operations to insert new records and update existing ones.
 5. **Verify:** Checks database record counts after loading.
 
-The UPSERT implementation makes database loading idempotent and preserves existing primary keys. Extraction and transformation currently process the complete CSV datasets.
+Database loading is idempotent. Extraction and transformation currently process the complete CSV datasets rather than incremental changes.
 
 Run the pipeline:
 
@@ -99,30 +101,36 @@ Run the pipeline:
 python -m src.pipeline
 ```
 
-## Database and Logging
+## Database Design
 
-The project uses Neon PostgreSQL with SQLAlchemy and Psycopg.
+The project uses Neon PostgreSQL and includes five relational tables:
 
-Database credentials are managed through environment variables and excluded from version control.
+- `customers`
+- `product_categories`
+- `products`
+- `orders`
+- `order_items`
 
-The logging system records pipeline execution events, warnings, and errors in the console and `logs/pipeline.log`.
+The database schema includes primary keys, foreign keys, check constraints, and indexes to support referential integrity and query performance.
+
+Detailed schema documentation is available in `sql/10_schema_documentation.md`.
 
 ## Data Quality
 
 Key validation results:
 
+- 99,441 customers processed.
 - 99,441 orders processed.
 - 112,650 order items processed.
 - 32,951 products processed.
-- 99,441 customers processed.
-- 775 orders have no associated items.
+- 73 product categories registered.
 - No order items reference nonexistent orders.
-- 2,965 orders have missing customer delivery timestamps.
-- Customer ZIP code prefixes are preserved as strings to retain leading zeros.
+- 2,965 orders have missing customer delivery timestamps, consistent with incomplete delivery information in the source dataset.
+- ZIP code prefixes are preserved as strings to retain leading zeros.
 
 ## SQL Business Analysis
 
-The `sql/` directory contains nine queries covering:
+The `sql/` directory contains nine SQL analysis scripts covering:
 
 - Database inspection and data validation.
 - Monthly and overall sales performance.
@@ -131,9 +139,9 @@ The `sql/` directory contains nine queries covering:
 - Category revenue and Pareto analysis.
 - Seller performance.
 
-Selected findings:
+Selected business metrics:
 
-| Business Metric | Result |
+| Metric | Result |
 |---|---:|
 | Delivered orders | 96,478 |
 | Delivered items | 110,197 |
@@ -144,15 +152,17 @@ Selected findings:
 
 ## Automated Testing
 
-The project uses Pytest to validate data transformations, quality rules, and pipeline execution.
+Pytest validates data transformations, data quality rules, and pipeline execution.
 
-Current test results: **17 passed, 0 failed.**
+**Current results: 17 tests passed.**
 
-Run the tests:
+Run tests locally:
 
 ```bash
 python -m pytest -v
 ```
+
+GitHub Actions automatically runs the test suite on pushes and pull requests targeting `main`.
 
 ## Installation and Configuration
 
@@ -183,7 +193,7 @@ pip install -r requirements.txt
 
 ### 4. Configure environment variables
 
-Copy `.env.example` to `.env` and configure your Neon connection:
+Copy `.env.example` to `.env` and configure your Neon PostgreSQL connection:
 
 ```dotenv
 DATABASE_URL="postgresql+psycopg://USER:PASSWORD@HOST/DATABASE?sslmode=require"
@@ -211,20 +221,19 @@ python -m pytest -v
 
 **Completed**
 
-- Project setup and GitHub integration.
-- Data inspection and validation.
-- ETL transformations for four datasets.
+- ETL pipeline implementation.
+- Integration of five Olist datasets.
 - Neon PostgreSQL integration.
 - Idempotent UPSERT database loading.
-- Logging and pipeline error handling.
+- Logging and error handling.
+- Relational database design and documentation.
 - SQL business analysis.
-- Automated tests (17 passing).
+- Automated testing with 17 passing tests.
+- GitHub Actions CI workflow.
 
-**Next Development Goals**
+**Next Development Goal**
 
-- Extend the pipeline to additional Olist datasets.
-- Improve database schema design and data modeling.
-- Implement automated testing with GitHub Actions.
+- Implement workflow orchestration with Apache Airflow.
 
 ## Author
 
