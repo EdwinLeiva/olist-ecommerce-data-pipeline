@@ -1,10 +1,15 @@
 from sqlalchemy import text
 
+from src.logger import setup_logger
+
+
+logger = setup_logger()
+
 
 def load_product_categories_to_database(df, engine):
     """Load unique product categories into PostgreSQL using UPSERT."""
 
-    print("Loading product categories into PostgreSQL...")
+    logger.debug("Loading product categories into PostgreSQL...")
 
     categories = (
         df["product_category_name"]
@@ -13,7 +18,7 @@ def load_product_categories_to_database(df, engine):
     )
 
     if categories.empty:
-        print("No product categories to load.")
+        logger.debug("No product categories to load.")
         return 0
 
     records = [
@@ -39,8 +44,11 @@ def load_product_categories_to_database(df, engine):
             text("SELECT COUNT(*) FROM product_categories")
         ).scalar_one()
 
-    print(f"Unique categories received: {len(records):,}")
-    print(f"Categories currently in PostgreSQL: {actual_rows:,}")
-    print("Product categories loaded successfully.")
+    logger.debug("Unique categories received: %s", f"{len(records):,}")
+    logger.debug(
+        "Categories currently in PostgreSQL: %s",
+        f"{actual_rows:,}",
+    )
+    logger.debug("Product categories loaded successfully.")
 
     return actual_rows

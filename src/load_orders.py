@@ -3,8 +3,12 @@ import os
 import pandas as pd
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
-from sqlalchemy.dialects.postgresql import insert
 
+from src.logger import setup_logger
+
+
+# Configure logger
+logger = setup_logger()
 
 # Load environment variables
 load_dotenv()
@@ -24,10 +28,10 @@ def get_database_engine():
 def load_orders_to_database(df, engine):
     """Incrementally load orders into PostgreSQL using UPSERT."""
 
-    print("Loading orders into PostgreSQL...")
+    logger.debug("Loading orders into PostgreSQL...")
 
     if df.empty:
-        print("No orders to load.")
+        logger.debug("No orders to load.")
         return 0
 
     expected_rows = len(df)
@@ -37,10 +41,6 @@ def load_orders_to_database(df, engine):
     records = df.to_dict(orient="records")
 
     # Build PostgreSQL UPSERT statement
-    orders_table = "orders"
-
-    columns = list(df.columns)
-
     insert_statement = text("""
         INSERT INTO orders (
             order_id,
@@ -85,9 +85,9 @@ def load_orders_to_database(df, engine):
             text("SELECT COUNT(*) FROM orders")
         ).scalar_one()
 
-    print(f"Rows received: {expected_rows:,}")
-    print(f"Rows currently in PostgreSQL: {actual_rows:,}")
-    print("Orders incrementally loaded successfully.")
+    logger.debug("Rows received: %s", f"{expected_rows:,}")
+    logger.debug("Rows currently in PostgreSQL: %s", f"{actual_rows:,}")
+    logger.debug("Orders incrementally loaded successfully.")
 
     return actual_rows
 
@@ -97,22 +97,25 @@ def main():
 
     from src.transform_orders import load_orders, transform_orders
 
-    print("=" * 60)
-    print("LOADING OLIST ORDERS INTO NEON")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("LOADING OLIST ORDERS INTO NEON")
+    logger.info("=" * 60)
 
     # 1. Extract
-    print("\nStep 1: Extracting orders...")
+    logger.info("Step 1: Extracting orders...")
     orders = load_orders()
-    print(f"Rows extracted: {len(orders):,}")
+    logger.info("Rows extracted: %s", f"{len(orders):,}")
 
     # 2. Transform
-    print("\nStep 2: Transforming orders...")
+    logger.info("Step 2: Transforming orders...")
     transformed_orders = transform_orders(orders)
-    print(f"Rows transformed: {len(transformed_orders):,}")
+    logger.info(
+        "Rows transformed: %s",
+        f"{len(transformed_orders):,}",
+    )
 
     # 3. Incremental Load
-    print("\nStep 3: Loading orders into Neon...")
+    logger.info("Step 3: Loading orders into Neon...")
     engine = get_database_engine()
 
     try:
@@ -120,7 +123,10 @@ def main():
             transformed_orders,
             engine,
         )
-        print(f"\nTotal orders in database: {rows_loaded:,}")
+        logger.info(
+            "Total orders in database: %s",
+            f"{rows_loaded:,}",
+        )
     finally:
         engine.dispose()
 

@@ -1,4 +1,5 @@
 from pathlib import Path
+from prefect import flow, get_run_logger
 
 from src.logger import setup_logger
 
@@ -35,49 +36,52 @@ PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 logger = setup_logger()
 
 
+@flow(name="Olist E-commerce ETL Pipeline")
 def run_pipeline():
     """
     Extract, transform, save, and load Olist datasets into Neon.
     """
 
-    logger.info("=" * 60)
-    logger.info("OLIST E-COMMERCE ETL PIPELINE")
-    logger.info("=" * 60)
+    prefect_logger = get_run_logger()
+
+    prefect_logger.info("=" * 60)
+    prefect_logger.info("OLIST E-COMMERCE ETL PIPELINE")
+    prefect_logger.info("=" * 60)
 
     # 1. Extract
-    logger.info("Step 1: Extracting data...")
+    prefect_logger.info("Step 1: Extracting data...")
 
     orders = load_orders()
     order_items = load_order_items()
     products = load_products()
     customers = load_customers()
 
-    logger.info("Orders extracted: %s", f"{len(orders):,}")
-    logger.info("Order items extracted: %s", f"{len(order_items):,}")
-    logger.info("Products extracted: %s", f"{len(products):,}")
-    logger.info("Customers extracted: %s", f"{len(customers):,}")
+    logger.debug("Orders extracted: %s", f"{len(orders):,}")
+    logger.debug("Order items extracted: %s", f"{len(order_items):,}")
+    logger.debug("Products extracted: %s", f"{len(products):,}")
+    logger.debug("Customers extracted: %s", f"{len(customers):,}")
 
     # 2. Transform
-    logger.info("Step 2: Transforming data...")
+    prefect_logger.info("Step 2: Transforming data...")
 
     transformed_orders = transform_orders(orders)
     transformed_order_items = transform_order_items(order_items)
     transformed_products = transform_products(products)
     transformed_customers = transform_customers(customers)
 
-    logger.info("Orders transformed: %s", f"{len(transformed_orders):,}")
-    logger.info(
+    logger.debug("Orders transformed: %s", f"{len(transformed_orders):,}")
+    logger.debug(
         "Order items transformed: %s",
         f"{len(transformed_order_items):,}",
     )
-    logger.info("Products transformed: %s", f"{len(transformed_products):,}")
-    logger.info(
+    logger.debug("Products transformed: %s", f"{len(transformed_products):,}")
+    logger.debug(
         "Customers transformed: %s",
         f"{len(transformed_customers):,}",
     )
 
     # 3. Save processed CSV files
-    logger.info("Step 3: Saving processed CSV files...")
+    prefect_logger.info("Step 3: Saving processed CSV files...")
 
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -91,13 +95,13 @@ def run_pipeline():
     transformed_products.to_csv(products_output, index=False)
     transformed_customers.to_csv(customers_output, index=False)
 
-    logger.info("Orders CSV saved: %s", orders_output)
-    logger.info("Order items CSV saved: %s", items_output)
-    logger.info("Products CSV saved: %s", products_output)
-    logger.info("Customers CSV saved: %s", customers_output)
+    logger.debug("Orders CSV saved: %s", orders_output)
+    logger.debug("Order items CSV saved: %s", items_output)
+    logger.debug("Products CSV saved: %s", products_output)
+    logger.debug("Customers CSV saved: %s", customers_output)
 
     # 4. Load all tables into Neon
-    logger.info("Step 4: Loading data into Neon...")
+    prefect_logger.info("Step 4: Loading data into Neon...")
 
     engine = get_database_engine()
 
@@ -107,7 +111,7 @@ def run_pipeline():
             transformed_customers,
             engine,
         )
-        logger.info(
+        logger.debug(
             "Customers loaded and verified: %s",
             f"{customers_loaded:,}",
         )
@@ -116,7 +120,7 @@ def run_pipeline():
             transformed_products,
             engine,
         )
-        logger.info(
+        logger.debug(
             "Product categories loaded and verified: %s",
             f"{categories_loaded:,}",
         )
@@ -125,7 +129,7 @@ def run_pipeline():
             transformed_products,
             engine,
         )
-        logger.info(
+        logger.debug(
             "Products loaded and verified: %s",
             f"{products_loaded:,}",
         )
@@ -134,7 +138,7 @@ def run_pipeline():
             transformed_orders,
             engine,
         )
-        logger.info(
+        logger.debug(
             "Orders loaded and verified: %s",
             f"{orders_loaded:,}",
         )
@@ -143,7 +147,7 @@ def run_pipeline():
             transformed_order_items,
             engine,
         )
-        logger.info(
+        logger.debug(
             "Order items loaded and verified: %s",
             f"{order_items_loaded:,}",
         )
@@ -152,42 +156,48 @@ def run_pipeline():
         engine.dispose()
 
     # 5. Pipeline summary
-    logger.info("Pipeline summary")
-    logger.info("-" * 40)
+    prefect_logger.info("Pipeline summary")
+    prefect_logger.info("-" * 40)
 
-    logger.info("Customers loaded: %s", f"{customers_loaded:,}")
-    logger.info("Product categories loaded: %s", f"{categories_loaded:,}")
+    prefect_logger.info("Customers loaded: %s", f"{customers_loaded:,}")
+    prefect_logger.info("Product categories loaded: %s", f"{categories_loaded:,}")
 
-    logger.info("Products extracted: %s", f"{len(products):,}")
-    logger.info("Products transformed: %s", f"{len(transformed_products):,}")
-    logger.info("Products loaded: %s", f"{products_loaded:,}")
+    prefect_logger.info("Products extracted: %s", f"{len(products):,}")
+    prefect_logger.info(
+        "Products transformed: %s",
+        f"{len(transformed_products):,}",
+    )
+    prefect_logger.info("Products loaded: %s", f"{products_loaded:,}")
 
-    logger.info("Orders extracted: %s", f"{len(orders):,}")
-    logger.info("Orders transformed: %s", f"{len(transformed_orders):,}")
-    logger.info("Orders loaded: %s", f"{orders_loaded:,}")
+    prefect_logger.info("Orders extracted: %s", f"{len(orders):,}")
+    prefect_logger.info(
+        "Orders transformed: %s",
+        f"{len(transformed_orders):,}",
+    )
+    prefect_logger.info("Orders loaded: %s", f"{orders_loaded:,}")
 
-    logger.info("Order items extracted: %s", f"{len(order_items):,}")
-    logger.info(
+    prefect_logger.info("Order items extracted: %s", f"{len(order_items):,}")
+    prefect_logger.info(
         "Order items transformed: %s",
         f"{len(transformed_order_items):,}",
     )
-    logger.info("Order items loaded: %s", f"{order_items_loaded:,}")
+    prefect_logger.info("Order items loaded: %s", f"{order_items_loaded:,}")
 
     missing_delivery_dates = (
         transformed_orders["order_delivered_customer_date"].isna().sum()
     )
 
-    logger.warning(
+    prefect_logger.warning(
         "Orders with missing customer delivery dates: %s",
         f"{missing_delivery_dates:,}",
     )
 
-    logger.info("Orders CSV: %s", orders_output)
-    logger.info("Order items CSV: %s", items_output)
-    logger.info("Products CSV: %s", products_output)
-    logger.info("Customers CSV: %s", customers_output)
+    prefect_logger.info("Orders CSV: %s", orders_output)
+    prefect_logger.info("Order items CSV: %s", items_output)
+    prefect_logger.info("Products CSV: %s", products_output)
+    prefect_logger.info("Customers CSV: %s", customers_output)
 
-    logger.info("ETL pipeline completed successfully!")
+    prefect_logger.info("ETL pipeline completed successfully!")
 
     return (
         transformed_orders,

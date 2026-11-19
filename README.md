@@ -1,12 +1,12 @@
 # Olist E-commerce Data Pipeline
 
-An end-to-end data engineering project that processes Brazilian e-commerce data using Python, Pandas, and Neon PostgreSQL.
+An end-to-end data engineering project that transforms Brazilian e-commerce data using Python, Pandas, Prefect, and Neon PostgreSQL.
 
 ## Overview
 
 This project implements an ETL pipeline to extract, transform, validate, and load data from the Olist Brazilian E-commerce dataset into a cloud-hosted PostgreSQL database.
 
-The pipeline currently processes five datasets:
+The pipeline processes five datasets:
 
 | Dataset | Records |
 |---|---:|
@@ -39,6 +39,8 @@ Neon PostgreSQL
       |
       v
 SQL Business Analysis
+
+Prefect orchestrates and monitors the ETL flow.
 ```
 
 ## Technology Stack
@@ -46,72 +48,37 @@ SQL Business Analysis
 | Technology | Purpose |
 |---|---|
 | Python 3.13 | ETL development |
-| Pandas | Data transformation |
+| Pandas | Data processing |
 | PostgreSQL | Relational database |
 | Neon | Cloud database hosting |
-| SQLAlchemy | Database connectivity |
-| Psycopg | PostgreSQL driver |
-| python-dotenv | Environment configuration |
+| SQLAlchemy & Psycopg | Database connectivity |
+| Prefect 3 | Workflow orchestration |
+| Prefect Cloud | Flow monitoring |
 | Pytest | Automated testing |
 | GitHub Actions | Continuous integration |
 
-## Project Structure
+## Key Features
 
-```text
-olist-ecommerce-data-pipeline/
-├── data/
-│   ├── raw/
-│   └── processed/
-├── logs/
-├── sql/
-│   ├── 01_database_inspection.sql
-│   ├── ...
-│   └── 10_schema_documentation.md
-├── src/
-│   ├── pipeline.py
-│   ├── logger.py
-│   ├── check_connection.py
-│   ├── transform_*.py
-│   └── load_*.py
-├── tests/
-├── .github/
-│   └── workflows/
-│       └── python-tests.yml
-├── .env.example
-├── .gitignore
-├── README.md
-└── requirements.txt
-```
+- **ETL pipeline:** Extracts, transforms, validates, and loads five datasets.
+- **Idempotent loading:** Uses PostgreSQL UPSERT operations to insert and update records safely.
+- **Data modeling:** Relational schema with primary keys, foreign keys, constraints, and indexes.
+- **Error handling:** Handles pipeline failures and database resource cleanup.
+- **Orchestration:** Uses Prefect to organize and monitor pipeline executions.
+- **SQL analysis:** Includes nine scripts for data exploration and business analysis.
+- **Automated testing:** 17 tests covering transformations and data quality.
+- **CI/CD:** GitHub Actions automatically runs tests on pushes and pull requests to `main`.
 
-## ETL Pipeline
-
-The pipeline executes five stages:
-
-1. **Extract:** Reads the source CSV datasets.
-2. **Transform:** Cleans records, converts data types, and handles duplicates and missing values.
-3. **Save:** Generates processed CSV files.
-4. **Load:** Uses PostgreSQL UPSERT operations to insert new records and update existing ones.
-5. **Verify:** Checks database record counts after loading.
-
-Database loading is idempotent. Extraction and transformation currently process the complete CSV datasets rather than incremental changes.
-
-Run the pipeline:
-
-```bash
-python -m src.pipeline
-```
+**Note:** Database loading is idempotent, but extraction and transformation currently process the complete CSV datasets rather than incremental changes.
 
 ## Database Design
 
-The project uses Neon PostgreSQL and includes five relational tables:
+The PostgreSQL database contains five relational tables:
 
 - `customers`
 - `product_categories`
 - `products`
 - `orders`
 - `order_items`
-
-The database schema includes primary keys, foreign keys, check constraints, and indexes to support referential integrity and query performance.
 
 Detailed schema documentation is available in `sql/10_schema_documentation.md`.
 
@@ -124,20 +91,19 @@ Key validation results:
 - 112,650 order items processed.
 - 32,951 products processed.
 - 73 product categories registered.
-- No order items reference nonexistent orders.
+- ZIP code prefixes preserved as strings.
 - 2,965 orders have missing customer delivery timestamps, consistent with incomplete delivery information in the source dataset.
-- ZIP code prefixes are preserved as strings to retain leading zeros.
 
 ## SQL Business Analysis
 
-The `sql/` directory contains nine SQL analysis scripts covering:
+The `sql/` directory contains nine analysis scripts covering:
 
-- Database inspection and data validation.
-- Monthly and overall sales performance.
-- Product price distribution and outlier detection.
+- Sales performance and monthly trends.
+- Product prices and outlier detection.
 - Sales by product category.
-- Category revenue and Pareto analysis.
+- Revenue distribution and Pareto analysis.
 - Seller performance.
+- Database inspection and data validation.
 
 Selected business metrics:
 
@@ -150,21 +116,29 @@ Selected business metrics:
 
 *Product sales and average order value exclude freight charges.*
 
-## Automated Testing
+## Project Structure
 
-Pytest validates data transformations, data quality rules, and pipeline execution.
-
-**Current results: 17 tests passed.**
-
-Run tests locally:
-
-```bash
-python -m pytest -v
+```text
+olist-ecommerce-data-pipeline/
+├── data/
+│   ├── raw/
+│   └── processed/
+├── logs/
+├── sql/
+├── src/
+│   ├── pipeline.py
+│   ├── logger.py
+│   ├── transform_*.py
+│   └── load_*.py
+├── tests/
+├── .github/workflows/
+├── .env.example
+├── .gitignore
+├── README.md
+└── requirements.txt
 ```
 
-GitHub Actions automatically runs the test suite on pushes and pull requests targeting `main`.
-
-## Installation and Configuration
+## Installation and Usage
 
 ### 1. Clone the repository
 
@@ -215,25 +189,26 @@ python -m src.pipeline
 python -m pytest -v
 ```
 
+The pipeline can also be monitored through the configured Prefect Cloud workspace.
+
 **Security:** Never commit `.env` files or database credentials.
 
 ## Project Status
 
-**Completed**
-
-- ETL pipeline implementation.
-- Integration of five Olist datasets.
+**Implemented:**
+- ETL pipeline and integration of five datasets.
 - Neon PostgreSQL integration.
-- Idempotent UPSERT database loading.
+- Idempotent database loading.
 - Logging and error handling.
-- Relational database design and documentation.
+- Relational database design.
 - SQL business analysis.
-- Automated testing with 17 passing tests.
-- GitHub Actions CI workflow.
+- Automated testing and GitHub Actions.
+- Prefect flow orchestration and Prefect Cloud monitoring.
 
-**Next Development Goal**
-
-- Implement workflow orchestration with Apache Airflow.
+**Next development goals:**
+- Configure Prefect deployments and workers.
+- Explore scheduled and automated pipeline execution.
+- Learn Apache Airflow.
 
 ## Author
 

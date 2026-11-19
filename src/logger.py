@@ -13,7 +13,10 @@ def setup_logger():
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 
     logger = logging.getLogger("olist_pipeline")
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
+
+    # Allow Prefect to capture and display log messages.
+    logger.propagate = False
 
     # Avoid adding duplicate handlers.
     if logger.handlers:
@@ -29,15 +32,9 @@ def setup_logger():
         LOG_FILE,
         encoding="utf-8",
     )
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
 
-    # Log to console.
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    console_handler.setFormatter(formatter)
-
     logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
 
     return logger

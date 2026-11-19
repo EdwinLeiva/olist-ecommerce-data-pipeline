@@ -1,3 +1,5 @@
+import logging
+
 import pandas as pd
 from sqlalchemy import text
 
@@ -6,15 +8,19 @@ from src.transform_customers import (
     load_customers,
     transform_customers,
 )
+from src.logger import setup_logger
+
+
+logger = setup_logger()
 
 
 def load_customers_to_database(df, engine):
     """Load customers into PostgreSQL using UPSERT."""
 
-    print("Loading customers into PostgreSQL...")
+    logger.debug("Loading customers into PostgreSQL...")
 
     if df.empty:
-        print("No customers to load.")
+        logger.debug("No customers to load.")
         return 0
 
     # Convert missing values to None for PostgreSQL.
@@ -55,25 +61,28 @@ def load_customers_to_database(df, engine):
             text("SELECT COUNT(*) FROM customers")
         ).scalar_one()
 
-    print(f"Rows received: {len(records):,}")
-    print(f"Rows currently in PostgreSQL: {actual_rows:,}")
-    print("Customers incrementally loaded successfully.")
+    logger.debug("Rows received: %s", f"{len(records):,}")
+    logger.debug("Rows currently in PostgreSQL: %s", f"{actual_rows:,}")
+    logger.debug("Customers incrementally loaded successfully.")
 
     return actual_rows
 
 
 def main():
-    print("Extracting customers...")
+    logger.info("Extracting customers...")
 
     customers = load_customers()
 
-    print(f"Rows extracted: {len(customers):,}")
+    logger.info("Rows extracted: %s", f"{len(customers):,}")
 
-    print("Transforming customers...")
+    logger.info("Transforming customers...")
 
     transformed_customers = transform_customers(customers)
 
-    print(f"Rows transformed: {len(transformed_customers):,}")
+    logger.info(
+        "Rows transformed: %s",
+        f"{len(transformed_customers):,}",
+    )
 
     engine = get_database_engine()
 
@@ -83,7 +92,10 @@ def main():
             engine,
         )
 
-        print(f"Total customers in database: {rows_loaded:,}")
+        logger.info(
+            "Total customers in database: %s",
+            f"{rows_loaded:,}",
+        )
 
     finally:
         engine.dispose()

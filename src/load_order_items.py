@@ -6,15 +6,19 @@ from src.transform_order_items import (
     load_order_items,
     transform_order_items,
 )
+from src.logger import setup_logger
+
+
+logger = setup_logger()
 
 
 def load_order_items_to_database(df, engine):
     """Load order items into PostgreSQL using UPSERT."""
 
-    print("Loading order items into PostgreSQL...")
+    logger.debug("Loading order items into PostgreSQL...")
 
     if df.empty:
-        print("No order items to load.")
+        logger.debug("No order items to load.")
         return 0
 
     # Convert missing values (NaN/NaT) to None for PostgreSQL.
@@ -60,25 +64,28 @@ def load_order_items_to_database(df, engine):
             text("SELECT COUNT(*) FROM order_items")
         ).scalar_one()
 
-    print(f"Rows received: {len(records):,}")
-    print(f"Rows currently in PostgreSQL: {actual_rows:,}")
-    print("Order items incrementally loaded successfully.")
+    logger.debug("Rows received: %s", f"{len(records):,}")
+    logger.debug("Rows currently in PostgreSQL: %s", f"{actual_rows:,}")
+    logger.debug("Order items incrementally loaded successfully.")
 
     return actual_rows
 
 
 def main():
-    print("Extracting order items...")
+    logger.info("Extracting order items...")
 
     order_items = load_order_items()
 
-    print(f"Rows extracted: {len(order_items):,}")
+    logger.info("Rows extracted: %s", f"{len(order_items):,}")
 
-    print("Transforming order items...")
+    logger.info("Transforming order items...")
 
     transformed_items = transform_order_items(order_items)
 
-    print(f"Rows transformed: {len(transformed_items):,}")
+    logger.info(
+        "Rows transformed: %s",
+        f"{len(transformed_items):,}",
+    )
 
     engine = get_database_engine()
 
@@ -88,7 +95,10 @@ def main():
             engine,
         )
 
-        print(f"Total order items in database: {rows_loaded:,}")
+        logger.info(
+            "Total order items in database: %s",
+            f"{rows_loaded:,}",
+        )
 
     finally:
         engine.dispose()

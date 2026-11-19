@@ -6,15 +6,19 @@ from src.transform_products import (
     load_products,
     transform_products,
 )
+from src.logger import setup_logger
+
+
+logger = setup_logger()
 
 
 def load_products_to_database(df, engine):
     """Load products into PostgreSQL using UPSERT."""
 
-    print("Loading products into PostgreSQL...")
+    logger.debug("Loading products into PostgreSQL...")
 
     if df.empty:
-        print("No products to load.")
+        logger.debug("No products to load.")
         return 0
 
     # Convert missing values (NaN/NaT) to None for PostgreSQL.
@@ -67,25 +71,28 @@ def load_products_to_database(df, engine):
             text("SELECT COUNT(*) FROM products")
         ).scalar_one()
 
-    print(f"Rows received: {len(records):,}")
-    print(f"Rows currently in PostgreSQL: {actual_rows:,}")
-    print("Products incrementally loaded successfully.")
+    logger.debug("Rows received: %s", f"{len(records):,}")
+    logger.debug("Rows currently in PostgreSQL: %s", f"{actual_rows:,}")
+    logger.debug("Products incrementally loaded successfully.")
 
     return actual_rows
 
 
 def main():
-    print("Extracting products...")
+    logger.info("Extracting products...")
 
     products = load_products()
 
-    print(f"Rows extracted: {len(products):,}")
+    logger.info("Rows extracted: %s", f"{len(products):,}")
 
-    print("Transforming products...")
+    logger.info("Transforming products...")
 
     transformed_products = transform_products(products)
 
-    print(f"Rows transformed: {len(transformed_products):,}")
+    logger.info(
+        "Rows transformed: %s",
+        f"{len(transformed_products):,}",
+    )
 
     engine = get_database_engine()
 
@@ -95,7 +102,10 @@ def main():
             engine,
         )
 
-        print(f"Total products in database: {rows_loaded:,}")
+        logger.info(
+            "Total products in database: %s",
+            f"{rows_loaded:,}",
+        )
 
     finally:
         engine.dispose()
